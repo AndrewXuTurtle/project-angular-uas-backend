@@ -16,21 +16,22 @@ class TransaksiController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        $token = $user->currentAccessToken();
         
-        // Get business unit dari user yang login
-        $businessUnit = BusinessUnit::where('user_id', $user->id)->first();
-        
-        if (!$businessUnit) {
+        // Get business unit dari token
+        if (!$token || !$token->business_unit_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'User tidak memiliki business unit',
+                'message' => 'Business unit tidak ditemukan. Silakan login ulang.',
                 'data' => []
             ], 403);
         }
         
-        // Query transaksi berdasarkan business unit
+        $businessUnitId = $token->business_unit_id;
+        
+        // Query transaksi berdasarkan business unit dari token
         $query = Transaksi::with(['businessUnit', 'user'])
-            ->byBusinessUnit($businessUnit->id);
+            ->byBusinessUnit($businessUnitId);
         
         // Filter by status jika ada
         if ($request->has('status')) {
@@ -57,16 +58,17 @@ class TransaksiController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
+        $token = $user->currentAccessToken();
         
-        // Get business unit dari user yang login
-        $businessUnit = BusinessUnit::where('user_id', $user->id)->first();
-        
-        if (!$businessUnit) {
+        // Get business unit dari token
+        if (!$token || !$token->business_unit_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'User tidak memiliki business unit'
+                'message' => 'Business unit tidak ditemukan. Silakan login ulang.'
             ], 403);
         }
+        
+        $businessUnitId = $token->business_unit_id;
         
         $validated = $request->validate([
             'kode_transaksi' => 'required|string|max:50|unique:transaksis,kode_transaksi',
@@ -77,8 +79,8 @@ class TransaksiController extends Controller
             'keterangan' => 'nullable|string',
         ]);
         
-        // Auto-set business_unit_id dan user_id dari user yang login
-        $validated['business_unit_id'] = $businessUnit->id;
+        // Auto-set business_unit_id dan user_id dari token & user yang login
+        $validated['business_unit_id'] = $businessUnitId;
         $validated['user_id'] = $user->id;
         
         $transaksi = Transaksi::create($validated);
@@ -97,16 +99,17 @@ class TransaksiController extends Controller
     public function show(Request $request, string $id)
     {
         $user = $request->user();
+        $token = $user->currentAccessToken();
         
-        // Get business unit dari user yang login
-        $businessUnit = BusinessUnit::where('user_id', $user->id)->first();
-        
-        if (!$businessUnit) {
+        // Get business unit dari token
+        if (!$token || !$token->business_unit_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'User tidak memiliki business unit'
+                'message' => 'Business unit tidak ditemukan. Silakan login ulang.'
             ], 403);
         }
+        
+        $businessUnitId = $token->business_unit_id;
         
         $transaksi = Transaksi::with(['businessUnit', 'user'])->find($id);
         
@@ -118,7 +121,7 @@ class TransaksiController extends Controller
         }
         
         // Validasi: transaksi harus dalam business unit yang sama
-        if ($transaksi->business_unit_id !== $businessUnit->id) {
+        if ($transaksi->business_unit_id !== $businessUnitId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access to this transaksi'
@@ -146,16 +149,17 @@ class TransaksiController extends Controller
     public function update(Request $request, string $id)
     {
         $user = $request->user();
+        $token = $user->currentAccessToken();
         
-        // Get business unit dari user yang login
-        $businessUnit = BusinessUnit::where('user_id', $user->id)->first();
-        
-        if (!$businessUnit) {
+        // Get business unit dari token
+        if (!$token || !$token->business_unit_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'User tidak memiliki business unit'
+                'message' => 'Business unit tidak ditemukan. Silakan login ulang.'
             ], 403);
         }
+        
+        $businessUnitId = $token->business_unit_id;
         
         $transaksi = Transaksi::find($id);
         
@@ -167,7 +171,7 @@ class TransaksiController extends Controller
         }
         
         // Validasi: transaksi harus dalam business unit yang sama
-        if ($transaksi->business_unit_id !== $businessUnit->id) {
+        if ($transaksi->business_unit_id !== $businessUnitId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access to this transaksi'
@@ -207,16 +211,17 @@ class TransaksiController extends Controller
     public function destroy(Request $request, string $id)
     {
         $user = $request->user();
+        $token = $user->currentAccessToken();
         
-        // Get business unit dari user yang login
-        $businessUnit = BusinessUnit::where('user_id', $user->id)->first();
-        
-        if (!$businessUnit) {
+        // Get business unit dari token
+        if (!$token || !$token->business_unit_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'User tidak memiliki business unit'
+                'message' => 'Business unit tidak ditemukan. Silakan login ulang.'
             ], 403);
         }
+        
+        $businessUnitId = $token->business_unit_id;
         
         $transaksi = Transaksi::find($id);
         
@@ -228,7 +233,7 @@ class TransaksiController extends Controller
         }
         
         // Validasi: transaksi harus dalam business unit yang sama
-        if ($transaksi->business_unit_id !== $businessUnit->id) {
+        if ($transaksi->business_unit_id !== $businessUnitId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access to this transaksi'

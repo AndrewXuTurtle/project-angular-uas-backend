@@ -59,82 +59,50 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ==================== CREATE USERS ====================
-        // Admin Batam
-        $adminBatam = User::create([
-            'username' => 'admin_batam',
+        // User tidak lagi terikat pada business unit
+        $admin = User::create([
+            'username' => 'admin',
             'password' => Hash::make('Admin123'),
             'level' => 'admin',
             'is_active' => true,
         ]);
 
-        // User Batam
-        $userBatam = User::create([
-            'username' => 'user_batam',
+        $user1 = User::create([
+            'username' => 'user1',
             'password' => Hash::make('User123'),
             'level' => 'user',
             'is_active' => true,
         ]);
 
-        // Admin Jakarta
-        $adminJakarta = User::create([
-            'username' => 'admin_jakarta',
-            'password' => Hash::make('Admin123'),
-            'level' => 'admin',
-            'is_active' => true,
-        ]);
-
-        // User Jakarta
-        $userJakarta = User::create([
-            'username' => 'user_jakarta',
+        $user2 = User::create([
+            'username' => 'user2',
             'password' => Hash::make('User123'),
             'level' => 'user',
-            'is_active' => true,
-        ]);
-
-        // Admin Surabaya
-        $adminSurabaya = User::create([
-            'username' => 'admin_surabaya',
-            'password' => Hash::make('Admin123'),
-            'level' => 'admin',
             'is_active' => true,
         ]);
 
         // ==================== CREATE BUSINESS UNITS ====================
+        // Business Unit tidak lagi punya user_id
         $buBatam = BusinessUnit::create([
             'business_unit' => 'Batam',
-            'user_id' => $adminBatam->id,
-            'active' => 'y',
-        ]);
-
-        BusinessUnit::create([
-            'business_unit' => 'Batam',
-            'user_id' => $userBatam->id,
             'active' => 'y',
         ]);
 
         $buJakarta = BusinessUnit::create([
             'business_unit' => 'Jakarta',
-            'user_id' => $adminJakarta->id,
-            'active' => 'y',
-        ]);
-
-        BusinessUnit::create([
-            'business_unit' => 'Jakarta',
-            'user_id' => $userJakarta->id,
             'active' => 'y',
         ]);
 
         $buSurabaya = BusinessUnit::create([
             'business_unit' => 'Surabaya',
-            'user_id' => $adminSurabaya->id,
             'active' => 'y',
         ]);
 
         // ==================== CREATE PRIVILEGES ====================
-        // Admin Batam - Full access
+        // Admin - Full access ke semua menu
         foreach ([$dashboardMenu, $transaksiMenu, $masterMenu, $reportsMenu, $usersMenu, $menusMenu] as $menu) {
             PrivilegeUser::create([
-                'user_id' => $adminBatam->id,
+                'user_id' => $admin->id,
                 'menu_id' => $menu->id,
                 'allowed' => true,
                 'c' => true,
@@ -144,9 +112,9 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // User Batam - Limited access
+        // User1 - Limited access
         PrivilegeUser::create([
-            'user_id' => $userBatam->id,
+            'user_id' => $user1->id,
             'menu_id' => $dashboardMenu->id,
             'allowed' => true,
             'c' => false,
@@ -156,7 +124,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         PrivilegeUser::create([
-            'user_id' => $userBatam->id,
+            'user_id' => $user1->id,
             'menu_id' => $transaksiMenu->id,
             'allowed' => true,
             'c' => true,
@@ -165,9 +133,9 @@ class DatabaseSeeder extends Seeder
             'd' => false,
         ]);
 
-        // Users menu NOT allowed untuk user
+        // Users menu NOT allowed untuk user1
         PrivilegeUser::create([
-            'user_id' => $userBatam->id,
+            'user_id' => $user1->id,
             'menu_id' => $usersMenu->id,
             'allowed' => false,
             'c' => false,
@@ -176,22 +144,9 @@ class DatabaseSeeder extends Seeder
             'd' => false,
         ]);
 
-        // Admin Jakarta - Full access
-        foreach ([$dashboardMenu, $transaksiMenu, $masterMenu, $reportsMenu, $usersMenu, $menusMenu] as $menu) {
-            PrivilegeUser::create([
-                'user_id' => $adminJakarta->id,
-                'menu_id' => $menu->id,
-                'allowed' => true,
-                'c' => true,
-                'r' => true,
-                'u' => true,
-                'd' => true,
-            ]);
-        }
-
-        // User Jakarta - Limited access
+        // User2 - Limited access (same as user1)
         PrivilegeUser::create([
-            'user_id' => $userJakarta->id,
+            'user_id' => $user2->id,
             'menu_id' => $dashboardMenu->id,
             'allowed' => true,
             'c' => false,
@@ -201,7 +156,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         PrivilegeUser::create([
-            'user_id' => $userJakarta->id,
+            'user_id' => $user2->id,
             'menu_id' => $transaksiMenu->id,
             'allowed' => true,
             'c' => true,
@@ -210,20 +165,8 @@ class DatabaseSeeder extends Seeder
             'd' => false,
         ]);
 
-        // Admin Surabaya - Full access
-        foreach ([$dashboardMenu, $transaksiMenu, $masterMenu, $reportsMenu, $usersMenu, $menusMenu] as $menu) {
-            PrivilegeUser::create([
-                'user_id' => $adminSurabaya->id,
-                'menu_id' => $menu->id,
-                'allowed' => true,
-                'c' => true,
-                'r' => true,
-                'u' => true,
-                'd' => true,
-            ]);
-        }
-
         // ==================== CREATE TRANSAKSI ====================
+        // Transaksi dibuat dengan berbagai business unit
         // Transaksi Batam
         Transaksi::create([
             'kode_transaksi' => 'TRX-BTM-001',
@@ -231,7 +174,7 @@ class DatabaseSeeder extends Seeder
             'jumlah' => 15000000,
             'tanggal' => '2025-11-01',
             'business_unit_id' => $buBatam->id,
-            'user_id' => $adminBatam->id,
+            'user_id' => $admin->id,
             'status' => 'approved',
             'keterangan' => 'Laptop Dell Latitude untuk staff IT',
         ]);
@@ -242,7 +185,7 @@ class DatabaseSeeder extends Seeder
             'jumlah' => 5000000,
             'tanggal' => '2025-11-02',
             'business_unit_id' => $buBatam->id,
-            'user_id' => $userBatam->id,
+            'user_id' => $user1->id,
             'status' => 'pending',
             'keterangan' => 'Sewa kantor bulan November',
         ]);
@@ -253,7 +196,7 @@ class DatabaseSeeder extends Seeder
             'jumlah' => 20000000,
             'tanggal' => '2025-11-03',
             'business_unit_id' => $buBatam->id,
-            'user_id' => $adminBatam->id,
+            'user_id' => $admin->id,
             'status' => 'approved',
             'keterangan' => 'Gaji karyawan bulan Oktober',
         ]);
@@ -265,7 +208,7 @@ class DatabaseSeeder extends Seeder
             'jumlah' => 8000000,
             'tanggal' => '2025-11-01',
             'business_unit_id' => $buJakarta->id,
-            'user_id' => $adminJakarta->id,
+            'user_id' => $admin->id,
             'status' => 'approved',
             'keterangan' => 'Meja dan kursi kantor',
         ]);
@@ -276,9 +219,20 @@ class DatabaseSeeder extends Seeder
             'jumlah' => 3000000,
             'tanggal' => '2025-11-02',
             'business_unit_id' => $buJakarta->id,
-            'user_id' => $userJakarta->id,
+            'user_id' => $user2->id,
             'status' => 'pending',
             'keterangan' => 'Service AC rutin',
+        ]);
+
+        Transaksi::create([
+            'kode_transaksi' => 'TRX-JKT-003',
+            'nama_transaksi' => 'Pembelian ATK',
+            'jumlah' => 2000000,
+            'tanggal' => '2025-11-03',
+            'business_unit_id' => $buJakarta->id,
+            'user_id' => $user1->id,
+            'status' => 'approved',
+            'keterangan' => 'Alat tulis kantor bulanan',
         ]);
 
         // Transaksi Surabaya
@@ -288,18 +242,34 @@ class DatabaseSeeder extends Seeder
             'jumlah' => 12000000,
             'tanggal' => '2025-11-01',
             'business_unit_id' => $buSurabaya->id,
-            'user_id' => $adminSurabaya->id,
+            'user_id' => $admin->id,
             'status' => 'approved',
             'keterangan' => 'Iklan digital media sosial',
         ]);
 
+        Transaksi::create([
+            'kode_transaksi' => 'TRX-SBY-002',
+            'nama_transaksi' => 'Training Karyawan',
+            'jumlah' => 7000000,
+            'tanggal' => '2025-11-02',
+            'business_unit_id' => $buSurabaya->id,
+            'user_id' => $user2->id,
+            'status' => 'pending',
+            'keterangan' => 'Pelatihan customer service',
+        ]);
+
         $this->command->info('🎉 Seeder berhasil dijalankan!');
         $this->command->info('');
-        $this->command->info('=== Test Accounts ===');
-        $this->command->info('Admin Batam    : admin_batam / Admin123');
-        $this->command->info('User Batam     : user_batam / User123');
-        $this->command->info('Admin Jakarta  : admin_jakarta / Admin123');
-        $this->command->info('User Jakarta   : user_jakarta / User123');
-        $this->command->info('Admin Surabaya : admin_surabaya / Admin123');
+        $this->command->info('=== Test Accounts (Semua user bisa akses semua business unit) ===');
+        $this->command->info('Admin : admin / Admin123');
+        $this->command->info('User1 : user1 / User123');
+        $this->command->info('User2 : user2 / User123');
+        $this->command->info('');
+        $this->command->info('=== Business Units ===');
+        $this->command->info('1. Batam (ID: ' . $buBatam->id . ')');
+        $this->command->info('2. Jakarta (ID: ' . $buJakarta->id . ')');
+        $this->command->info('3. Surabaya (ID: ' . $buSurabaya->id . ')');
+        $this->command->info('');
+        $this->command->info('Login dengan menyertakan business_unit_id yang dipilih');
     }
 }

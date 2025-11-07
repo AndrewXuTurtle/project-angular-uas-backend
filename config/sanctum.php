@@ -81,4 +81,17 @@ return [
         'validate_csrf_token' => Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Personal Access Token Model
+    |--------------------------------------------------------------------------
+    |
+    | This configuration option allows you to customize the personal access
+    | token model used by Sanctum. You may extend the default model or
+    | create your own model that extends the Sanctum model.
+    |
+    */
+
+    'personal_access_token_model' => App\Models\PersonalAccessToken::class,
+
 ];

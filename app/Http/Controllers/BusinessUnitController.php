@@ -9,6 +9,19 @@ use App\Http\Resources\BusinessUnitResource;
 class BusinessUnitController extends Controller
 {
     /**
+     * Display a listing of active business units (PUBLIC - for login page).
+     */
+    public function publicList()
+    {
+        $businessUnits = BusinessUnit::where('active', 'y')->get();
+        
+        return response()->json([
+            'success' => true,
+            'data' => BusinessUnitResource::collection($businessUnits)
+        ]);
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index()

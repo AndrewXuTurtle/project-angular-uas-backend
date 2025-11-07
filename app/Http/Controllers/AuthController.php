@@ -20,6 +20,7 @@ class AuthController extends Controller
         $request->validate([
             'username' => 'required|string',
             'password' => 'required|string',
+            'business_unit_id' => 'required|exists:business_units,id',
         ]);
 
         $user = User::where('username', $request->username)->first();
@@ -38,18 +39,32 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // Validasi business unit
+        $businessUnit = BusinessUnit::find($request->business_unit_id);
+        if (!$businessUnit || $businessUnit->active !== 'y') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Business unit tidak valid atau tidak aktif'
+            ], 400);
+        }
+
         // Hapus token lama
         $user->tokens()->delete();
 
         // Buat token baru
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $token = $user->createToken('auth-token');
+        
+        // Set business_unit_id di token
+        $token->accessToken->business_unit_id = $businessUnit->id;
+        $token->accessToken->save();
 
         return response()->json([
             'success' => true,
             'message' => 'Login berhasil',
             'data' => [
                 'user' => new UserResource($user),
-                'token' => $token
+                'business_unit' => new BusinessUnitResource($businessUnit),
+                'token' => $token->plainTextToken
             ]
         ]);
     }
@@ -84,12 +99,16 @@ class AuthController extends Controller
     public function getUserPrivileges(Request $request)
     {
         $user = $request->user();
+        $token = $user->currentAccessToken();
         
-        // Load user dengan privileges dan business unit
-        $user->load(['privilegeUsers.menu', 'businessUnits']);
+        // Get business unit dari token
+        $businessUnit = null;
+        if ($token && $token->business_unit_id) {
+            $businessUnit = BusinessUnit::find($token->business_unit_id);
+        }
         
-        // Get business unit pertama (assuming 1 user = 1 business unit)
-        $businessUnit = $user->businessUnits->first();
+        // Load user privileges
+        $user->load(['privilegeUsers.menu']);
         
         // Format privileges untuk Angular sidebar
         $menus = $user->privilegeUsers
@@ -117,6 +136,44 @@ class AuthController extends Controller
                 'user' => new UserResource($user),
                 'business_unit' => $businessUnit ? new BusinessUnitResource($businessUnit) : null,
                 'menus' => $menus
+            ]
+        ]);
+    }
+
+    /**
+     * Switch business unit without logout
+     */
+    public function switchBusinessUnit(Request $request)
+    {
+        $request->validate([
+            'business_unit_id' => 'required|exists:business_units,id',
+        ]);
+
+        $user = $request->user();
+        
+        // Validasi business unit
+        $businessUnit = BusinessUnit::find($request->business_unit_id);
+        if (!$businessUnit || $businessUnit->active !== 'y') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Business unit tidak valid atau tidak aktif'
+            ], 400);
+        }
+
+        // Hapus token lama
+        $user->tokens()->delete();
+
+        // Buat token baru dengan business unit baru
+        $token = $user->createToken('auth-token');
+        $token->accessToken->business_unit_id = $businessUnit->id;
+        $token->accessToken->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Business unit berhasil diganti ke ' . $businessUnit->business_unit,
+            'data' => [
+                'business_unit' => new BusinessUnitResource($businessUnit),
+                'token' => $token->plainTextToken
             ]
         ]);
     }

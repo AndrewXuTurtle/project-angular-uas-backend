@@ -11,6 +11,7 @@ use App\Http\Controllers\TransaksiController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/business-units/list', [BusinessUnitController::class, 'publicList']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -18,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/user/privileges', [AuthController::class, 'getUserPrivileges']);
+    Route::post('/switch-business-unit', [AuthController::class, 'switchBusinessUnit']);
     
     // Users CRUD
     Route::apiResource('users', UserController::class);

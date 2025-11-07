@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     /**
      * Display a listing of the resource.
-     * Admin hanya bisa lihat users dalam business unit yang sama.
+     * Admin bisa lihat semua users.
      */
     public function index(Request $request)
     {
@@ -26,19 +26,8 @@ class UserController extends Controller
             ], 403);
         }
         
-        // Get business unit dari admin yang login
-        $businessUnit = BusinessUnit::where('user_id', $currentUser->id)->first();
-        
-        if (!$businessUnit) {
-            // Jika admin belum punya business unit, tampilkan semua users
-            $users = User::all();
-        } else {
-            // Filter users berdasarkan business unit yang sama
-            $userIds = BusinessUnit::where('business_unit', $businessUnit->business_unit)
-                ->pluck('user_id');
-            
-            $users = User::whereIn('id', $userIds)->get();
-        }
+        // Semua user bisa akses semua business unit, jadi tampilkan semua users
+        $users = User::all();
         
         return response()->json([
             'success' => true,
