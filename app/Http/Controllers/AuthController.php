@@ -13,14 +13,46 @@ use App\Http\Resources\UserResource;
 class AuthController extends Controller
 {
     /**
-     * Login user and create token
+     * @OA\Post(
+     *     path="/api/login",
+     *     tags={"Authentication"},
+     *     summary="User login",
+     *     description="Login user dan dapatkan token. Setelah login, user harus pilih business unit.",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"username","password"},
+     *             @OA\Property(property="username", type="string", example="user1"),
+     *             @OA\Property(property="password", type="string", example="User123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Login berhasil",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Login berhasil. Silakan pilih business unit."),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="user", type="object",
+     *                     @OA\Property(property="id", type="integer", example=2),
+     *                     @OA\Property(property="username", type="string", example="user1"),
+     *                     @OA\Property(property="level", type="string", example="user")
+     *                 ),
+     *                 @OA\Property(property="token", type="string", example="1|abc123...")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Username atau password salah")
+     * )
+     * 
+     * Login user WITHOUT business unit selection
+     * User must call selectBusinessUnit after login
      */
     public function login(Request $request)
     {
         $request->validate([
             'username' => 'required|string',
             'password' => 'required|string',
-            'business_unit_id' => 'required|exists:business_units,id',
         ]);
 
         $user = User::where('username', $request->username)->first();
@@ -39,42 +71,46 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // Validasi business unit
-        $businessUnit = BusinessUnit::find($request->business_unit_id);
-        if (!$businessUnit || $businessUnit->active !== 'y') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Business unit tidak valid atau tidak aktif'
-            ], 400);
-        }
-
         // Hapus token lama
         $user->tokens()->delete();
 
-        // Buat token baru
+        // Buat token baru (tanpa business_unit_id dulu)
         $token = $user->createToken('auth-token');
-        
-        // Set business_unit_id di token
-        $token->accessToken->business_unit_id = $businessUnit->id;
-        $token->accessToken->save();
 
         return response()->json([
             'success' => true,
-            'message' => 'Login berhasil',
+            'message' => 'Login berhasil. Silakan pilih business unit.',
             'data' => [
                 'user' => new UserResource($user),
-                'business_unit' => new BusinessUnitResource($businessUnit),
                 'token' => $token->plainTextToken
             ]
         ]);
     }
 
     /**
+     * @OA\Post(
+     *     path="/api/logout",
+     *     tags={"Authentication"},
+     *     summary="User logout",
+     *     description="Logout dan hapus token",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Logout berhasil",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Logout berhasil")
+     *         )
+     *     )
+     * )
+     * 
      * Logout user (revoke token)
      */
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        /** @var \Laravel\Sanctum\PersonalAccessToken $token */
+        $token = $request->user()->currentAccessToken();
+        $token->delete();
 
         return response()->json([
             'success' => true,
@@ -94,56 +130,119 @@ class AuthController extends Controller
     }
 
     /**
-     * Get user privileges with allowed menus and permissions
+     * @OA\Get(
+     *     path="/api/user/business-units",
+     *     tags={"Authentication"},
+     *     summary="Get user's accessible business units",
+     *     description="Ambil daftar business unit yang boleh diakses user (V4 - many-to-many)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Success",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Business units yang boleh diakses"),
+     *             @OA\Property(property="data", type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="business_unit", type="string", example="Batam"),
+     *                     @OA\Property(property="active", type="string", example="y")
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     * 
+     * Get business units that user can access (V4 - many-to-many)
      */
-    public function getUserPrivileges(Request $request)
+    public function getUserBusinessUnits(Request $request)
     {
         $user = $request->user();
-        $token = $user->currentAccessToken();
         
-        // Get business unit dari token
-        $businessUnit = null;
-        if ($token && $token->business_unit_id) {
-            $businessUnit = BusinessUnit::find($token->business_unit_id);
-        }
-        
-        // Load user privileges
-        $user->load(['privilegeUsers.menu']);
-        
-        // Format privileges untuk Angular sidebar
-        $menus = $user->privilegeUsers
-            ->filter(fn($privilege) => $privilege->allowed) // Only allowed menus
-            ->map(function ($privilege) {
-                return [
-                    'id' => $privilege->menu->id,
-                    'nama_menu' => $privilege->menu->nama_menu,
-                    'url_link' => $privilege->menu->url_link,
-                    'parent' => $privilege->menu->parent,
-                    'allowed' => $privilege->allowed,
-                    'permissions' => [
-                        'c' => $privilege->c,
-                        'r' => $privilege->r,
-                        'u' => $privilege->u,
-                        'd' => $privilege->d,
-                    ]
-                ];
-            })
-            ->values();
+        // Get business units via many-to-many relationship
+        $businessUnits = $user->businessUnits()->where('active', 'y')->get();
         
         return response()->json([
             'success' => true,
-            'data' => [
-                'user' => new UserResource($user),
-                'business_unit' => $businessUnit ? new BusinessUnitResource($businessUnit) : null,
-                'menus' => $menus
-            ]
+            'message' => 'Business units yang boleh diakses',
+            'data' => BusinessUnitResource::collection($businessUnits)
         ]);
     }
 
     /**
-     * Switch business unit without logout
+     * @OA\Get(
+     *     path="/api/user/menus",
+     *     tags={"Authentication"},
+     *     summary="Get user's accessible menus",
+     *     description="Ambil daftar menu yang boleh diakses user (V4 - many-to-many)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Success",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Menus yang boleh diakses"),
+     *             @OA\Property(property="data", type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="nama_menu", type="string", example="Dashboard"),
+     *                     @OA\Property(property="url_link", type="string", example="/dashboard")
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     * 
+     * Get menus that user can access (V4 - many-to-many)
      */
-    public function switchBusinessUnit(Request $request)
+    public function getUserMenus(Request $request)
+    {
+        $user = $request->user();
+        
+        // Get menus via many-to-many relationship
+        $menus = $user->menus;
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Menus yang boleh diakses',
+            'data' => $menus
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/select-business-unit",
+     *     tags={"Authentication"},
+     *     summary="Select business unit",
+     *     description="Pilih business unit setelah login. Token akan di-update dengan business_unit_id.",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"business_unit_id"},
+     *             @OA\Property(property="business_unit_id", type="integer", example=1)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Business unit berhasil dipilih",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Business unit berhasil dipilih: Batam"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="business_unit", type="object",
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="business_unit", type="string", example="Batam")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=403, description="User tidak punya akses ke business unit ini")
+     * )
+     * 
+     * Select business unit after login (V4 - many-to-many)
+     */
+    public function selectBusinessUnit(Request $request)
     {
         $request->validate([
             'business_unit_id' => 'required|exists:business_units,id',
@@ -151,30 +250,39 @@ class AuthController extends Controller
 
         $user = $request->user();
         
-        // Validasi business unit
-        $businessUnit = BusinessUnit::find($request->business_unit_id);
-        if (!$businessUnit || $businessUnit->active !== 'y') {
+        // Validasi: apakah user boleh akses business unit ini via many-to-many?
+        $businessUnit = $user->businessUnits()
+            ->where('business_units.id', $request->business_unit_id)
+            ->where('active', 'y')
+            ->first();
+        
+        if (!$businessUnit) {
             return response()->json([
                 'success' => false,
-                'message' => 'Business unit tidak valid atau tidak aktif'
-            ], 400);
+                'message' => 'Anda tidak memiliki akses ke business unit ini'
+            ], 403);
         }
 
-        // Hapus token lama
-        $user->tokens()->delete();
-
-        // Buat token baru dengan business unit baru
-        $token = $user->createToken('auth-token');
-        $token->accessToken->business_unit_id = $businessUnit->id;
-        $token->accessToken->save();
+        // Update token dengan business_unit_id
+        /** @var \Laravel\Sanctum\PersonalAccessToken $token */
+        $token = $user->currentAccessToken();
+        $token->business_unit_id = $businessUnit->id;
+        $token->save();
 
         return response()->json([
             'success' => true,
-            'message' => 'Business unit berhasil diganti ke ' . $businessUnit->business_unit,
+            'message' => 'Business unit berhasil dipilih: ' . $businessUnit->business_unit,
             'data' => [
-                'business_unit' => new BusinessUnitResource($businessUnit),
-                'token' => $token->plainTextToken
+                'business_unit' => new BusinessUnitResource($businessUnit)
             ]
         ]);
+    }
+
+    /**
+     * Switch business unit (same as select, for backward compatibility)
+     */
+    public function switchBusinessUnit(Request $request)
+    {
+        return $this->selectBusinessUnit($request);
     }
 }

@@ -45,10 +45,11 @@ class Menu extends Model
     }
 
     /**
-     * Get the privilege users for the menu.
+     * Get the users that have access to this menu.
      */
-    public function privilegeUsers()
+    public function users()
     {
-        return $this->hasMany(PrivilegeUser::class);
+        return $this->belongsToMany(User::class, 'user_menus', 'menu_id', 'user_id')
+            ->withTimestamps();
     }
 }

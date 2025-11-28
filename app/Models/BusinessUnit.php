@@ -16,15 +16,15 @@ class BusinessUnit extends Model
      */
     protected $fillable = [
         'business_unit',
-        'user_id',
         'active',
     ];
 
     /**
-     * Get the user that owns the business unit.
+     * Get the users that have access to this business unit.
      */
-    public function user()
+    public function users()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsToMany(User::class, 'user_business_units', 'business_unit_id', 'user_id')
+            ->withTimestamps();
     }
 }

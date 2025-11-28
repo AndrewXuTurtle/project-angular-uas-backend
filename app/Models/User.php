@@ -21,6 +21,7 @@ class User extends Authenticatable
     protected $fillable = [
         'username',
         'password',
+        'full_name',
         'level',
         'is_active',
     ];
@@ -49,18 +50,20 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the privilege users for the user.
-     */
-    public function privilegeUsers()
-    {
-        return $this->hasMany(PrivilegeUser::class);
-    }
-
-    /**
-     * Get the business units for the user.
+     * Get the business units that the user has access to.
      */
     public function businessUnits()
     {
-        return $this->hasMany(BusinessUnit::class);
+        return $this->belongsToMany(BusinessUnit::class, 'user_business_units', 'user_id', 'business_unit_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the menus that the user has access to.
+     */
+    public function menus()
+    {
+        return $this->belongsToMany(Menu::class, 'user_menus', 'user_id', 'menu_id')
+            ->withTimestamps();
     }
 }

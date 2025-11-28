@@ -26,7 +26,7 @@ class BusinessUnitController extends Controller
      */
     public function index()
     {
-        $businessUnits = BusinessUnit::with('user')->get();
+        $businessUnits = BusinessUnit::with('users')->get();
         return response()->json([
             'success' => true,
             'data' => BusinessUnitResource::collection($businessUnits)
